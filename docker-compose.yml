@@ -1,0 +1,80 @@
+version: "3.9"
+
+services:
+
+  # ── MLflow tracking server ──────────────────────────────────────────────────
+  mlflow:
+    image: python:3.11-slim
+    container_name: travel_mlflow
+    working_dir: /mlflow
+    volumes:
+      - mlflow_data:/mlflow
+    command: >
+      bash -c "pip install --quiet mlflow &&
+               mlflow server
+               --backend-store-uri sqlite:///mlflow.db
+               --default-artifact-root /mlflow/artifacts
+               --host 0.0.0.0
+               --port 5000"
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+
+  # ── FastAPI backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: travel_backend
+    env_file: .env                         # GROQ_API_KEY, LLM_MODEL live here
+    environment:
+      MLFLOW_TRACKING_URI:    http://mlflow:5000
+      MLFLOW_EXPERIMENT_NAME: travel-agent
+    volumes:
+      # Keep the Chroma vector DB on a named volume so embeddings survive rebuilds
+      - chroma_data:/app/backend/data/chroma_db
+    ports:
+      - "8000:8000"
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    command:
+      ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  # ── Streamlit frontend ──────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: travel_frontend
+    env_file: .env
+    environment:
+      MLFLOW_TRACKING_URI:    http://mlflow:5000
+      MLFLOW_EXPERIMENT_NAME: travel-agent
+    volumes:
+      - chroma_data:/app/backend/data/chroma_db
+    ports:
+      - "8501:8501"
+    depends_on:
+      backend:
+        condition: service_healthy
+    command:
+      - "streamlit"
+      - "run"
+      - "ui/streamlit_app.py"          # matches actual path: ui/streamlit_app.py
+      - "--server.port=8501"
+      - "--server.address=0.0.0.0"
+      - "--server.headless=true"
+
+volumes:
+  mlflow_data:   # MLflow SQLite DB + artifacts
+  chroma_data:   # Chroma vector store (persisted across rebuilds)
