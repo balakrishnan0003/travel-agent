@@ -27,10 +27,6 @@ LLM_MODEL = os.getenv("LLM_MODEL")
 # Hugging face
 HF_TOKEN = _get_secret("HF_TOKEN")
 
-#Ml Flow
-MLFLOW_TRACKING_URI    = _get_secret("MLFLOW_TRACKING_URI", "http://localhost:5000")
-MLFLOW_EXPERIMENT_NAME = _get_secret("MLFLOW_EXPERIMENT_NAME", "travel-agent")
-
 #Validation
 
 # Fail fast at startup if critical keys are missing rather than failing mid-request
@@ -55,6 +51,3 @@ print(f"Model: {LLM_MODEL}")
 
 # Hugging Face
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
-# ML FLow
-MLFLOW_TRACKING_URI    = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
-MLFLOW_EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME", "travel-agent")
