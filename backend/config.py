@@ -22,7 +22,7 @@ def _get_secret(key: str, default: str = "") -> str:
 
 # LLM
 GROQ_API_KEY = _get_secret("GROQ_API_KEY")
-LLM_MODEL = os.getenv("LLM_MODEL")
+LLM_MODEL = os.getenv("LLM_MODEL","openai/gpt-oss-120b")
 
 # Hugging face
 HF_TOKEN = _get_secret("HF_TOKEN")
