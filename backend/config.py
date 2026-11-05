@@ -58,13 +58,3 @@ HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 # ML FLow
 MLFLOW_TRACKING_URI    = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 MLFLOW_EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME", "travel-agent")
-
-
-
-# ── Debug (remove in production) ──────────────────────────────────────────────
-if __name__ == "__main__":
-    print(f"GROQ key loaded : {GROQ_API_KEY[:8]}...")
-    print(f"HF token loaded : {HF_TOKEN[:8]}..." if HF_TOKEN else "HF_TOKEN: not set")
-    print(f"Model           : {LLM_MODEL}")
-    print(f"MLflow URI      : {MLFLOW_TRACKING_URI}")
-    print(f"MLflow Exp      : {MLFLOW_EXPERIMENT_NAME}")
