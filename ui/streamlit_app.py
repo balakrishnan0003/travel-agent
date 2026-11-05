@@ -39,6 +39,27 @@ with st.sidebar:
 
     submit_btn = st.button("Generate Smart Itinerary", type="primary", use_container_width=True)
 
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def extract_text(msg) -> str:
+    """Handle both plain str and Groq's list-of-block content format."""
+    if isinstance(msg.content, str):
+        return msg.content
+    if isinstance(msg.content, list):
+        return "".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in msg.content
+        )
+    return ""
+
+
+def is_final_ai(msg) -> bool:
+    """True only for AI messages with no pending tool calls."""
+    tool_calls = getattr(msg, "tool_calls", None) or []
+    return msg.type == "ai" and not tool_calls
+
+
 # --- MAIN AGENT EXECUTION ---
 if submit_btn:
     if not destination.strip():
@@ -74,13 +95,16 @@ if submit_btn:
                 elif last_msg.type == "ai" and not getattr(last_msg, "tool_calls", []):
                     status_box.success("✅ Itinerary Complete!")
 
-            # --- NEW: SAFE AI MESSAGE EXTRACTION ---
-            # Filter specifically for AI messages that contain text and no tool calls
-            ai_messages = [msg for msg in full_history if msg.type == "ai" and not getattr(msg, "tool_calls", [])]
+            # --- SAFE AI MESSAGE EXTRACTION ---
+            # Handles tool_calls=None (Groq bug) and list-of-blocks content format
+            ai_messages = [msg for msg in full_history if is_final_ai(msg)]
 
-            if ai_messages and ai_messages[-1].content.strip():
-                final_message = ai_messages[-1].content
+            if ai_messages:
+                final_message = extract_text(ai_messages[-1]).strip()
             else:
+                final_message = ""
+
+            if not final_message:
                 final_message = "⚠️ *Agent completed the task but returned an empty response. Please adjust your prompt parameters and try again.*"
 
             # Extract tools used from the ENTIRE history
