@@ -1,5 +1,10 @@
 import time
-import mlflow
+try:
+    import mlflow
+    MLFLOW_ENABLED = True
+except ImportError:
+    MLFLOW_ENABLED = False
+
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage
 from langgraph.graph import StateGraph, END
@@ -47,8 +52,6 @@ def call_model(state: AgentState):
     if not any(m.type == "system" for m in messages):
         messages = [SystemMessage(content=SYSTEM_PROMPT)] + messages
 
-    # Count how many tool-call rounds have already happened.
-    # If the agent is stuck in a loop, inject a nudge to force synthesis.
     tool_rounds = sum(1 for m in messages if m.type == "tool")
     if tool_rounds >= MAX_TOOL_ITERATIONS:
         messages.append(
@@ -61,12 +64,11 @@ def call_model(state: AgentState):
             )
         )
 
-    # ── MLflow: log each LLM hop only when a run is active (set by main.py) ──
     start = time.time()
     response = llm.invoke(messages)
     latency = round(time.time() - start, 3)
 
-    if mlflow.active_run():
+    if MLFLOW_ENABLED and mlflow.active_run():
         tool_calls = getattr(response, "tool_calls", None) or []
         mlflow.log_metrics({
             "llm_call_latency_s": latency,
@@ -85,7 +87,6 @@ def call_model(state: AgentState):
 
 def should_continue(state: AgentState):
     last_message = state["messages"][-1]
-    # Normalise: Groq sometimes sets tool_calls=None instead of []
     tool_calls = getattr(last_message, "tool_calls", None) or []
     if tool_calls:
         return "tools"
